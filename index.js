@@ -185,6 +185,23 @@ app.post('/api/router/users', (req, res) => {
                     console.log(`🔄 Auto-restore speed: ${user.username} → ${savedSpeed}`);
                 }
             }
+
+            // إذا المستخدم ليس له Queue → اطرده ليختار السرعة
+            if (user.speed === 'NoQueue' || user.speed === '2M-Auto') {
+                const existingDisconnect = pendingCommands.find(c => c.username === user.username && c.type === 'disconnect');
+                if (!existingDisconnect) {
+                    const command = {
+                        id: Date.now() + Math.random(),
+                        type: 'disconnect',
+                        username: user.username,
+                        reason: 'NoQueue',
+                        createdAt: new Date().toISOString(),
+                        status: 'pending'
+                    };
+                    pendingCommands.push(command);
+                    console.log(`🚫 Auto-disconnect (NoQueue): ${user.username}`);
+                }
+            }
         });
     }
 
