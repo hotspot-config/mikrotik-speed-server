@@ -1,4 +1,4 @@
-const express = require('express');kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
+const express = require('express');
 const cors = require('cors');
 
 const app = express();
@@ -15,7 +15,7 @@ const executedCommands = []; // طلبات تم تنفيذها (للسجلات)
 const ROUTER_SECRET = process.env.ROUTER_SECRET || 'mikrotik-secret-key-2024';
 
 // ============================================================
-// API من صفحة Login/Status - kkkلإضافة طلب سرعة جديد
+// API من صفحة Login/Status - لإضافة طلب سرعة جديد (POST)
 // ============================================================
 app.post('/api/speed/request', (req, res) => {
     const { username, speed, ip } = req.body;
@@ -44,6 +44,42 @@ app.post('/api/speed/request', (req, res) => {
         message: 'Speed request queued',
         commandId: command.id
     });
+});
+
+// ============================================================
+// API للـ Image Beacon - GET request (يتجاوز CORS و Mixed Content)
+// ============================================================
+app.get('/api/speed/set', (req, res) => {
+    const { username, speed, u, s } = req.query;
+    const user = username || u;
+    const spd = speed || s;
+
+    if (!user || !spd) {
+        // إرجاع صورة 1x1 شفافة حتى لو فشل
+        const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+        res.set('Content-Type', 'image/gif');
+        return res.send(pixel);
+    }
+
+    // إضافة الطلب للقائمة
+    const command = {
+        id: Date.now(),
+        type: 'set-speed',
+        username: user,
+        speed: spd,
+        createdAt: new Date().toISOString(),
+        status: 'pending'
+    };
+
+    pendingCommands.push(command);
+
+    console.log(`📝 [GET] Speed request: ${user} → ${spd}`);
+
+    // إرجاع صورة 1x1 شفافة
+    const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+    res.set('Content-Type', 'image/gif');
+    res.set('Cache-Control', 'no-cache, no-store');
+    res.send(pixel);
 });
 
 // ============================================================
@@ -150,5 +186,3 @@ app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`🔑 Router Secret: ${ROUTER_SECRET}`);
 });
-
-
