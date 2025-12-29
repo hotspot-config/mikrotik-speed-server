@@ -12,6 +12,7 @@ const pendingCommands = [];  // طلبات تنتظر التنفيذ
 const executedCommands = []; // طلبات تم تنفيذها (للسجلات)
 let activeUsers = [];        // المستخدمين النشطين (يرسلها الراوتر)
 let routerStats = { cpu: 0, memory: 0, uptime: '0s', lastUpdate: null }; // إحصائيات الراوتر
+const userSpeeds = {};       // آخر سرعة لكل مستخدم (للحفظ بين إعادة التشغيل)
 
 // مفتاح أمني بسيط للـ MikroTik
 const ROUTER_SECRET = process.env.ROUTER_SECRET || 'mikrotik-secret-key-2024';
@@ -39,7 +40,10 @@ app.post('/api/speed/request', (req, res) => {
 
     pendingCommands.push(command);
 
-    console.log(`📝 New speed request: ${username} → ${speed}`);
+    // حفظ آخر سرعة للمستخدم
+    userSpeeds[username] = speed;
+
+    console.log(`📝 New speed request: ${username} → ${speed} (saved)`);
 
     res.json({
         success: true,
@@ -75,7 +79,10 @@ app.get('/api/speed/set', (req, res) => {
 
     pendingCommands.push(command);
 
-    console.log(`📝 [GET] Speed request: ${user} → ${spd}`);
+    // حفظ آخر سرعة للمستخدم
+    userSpeeds[user] = spd;
+
+    console.log(`📝 [GET] Speed request: ${user} → ${spd} (saved)`);
 
     // إرجاع صورة 1x1 شفافة
     const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
@@ -158,6 +165,27 @@ app.post('/api/router/users', (req, res) => {
     if (users && Array.isArray(users)) {
         activeUsers = users;
         console.log(`👥 Received ${users.length} active users from router`);
+
+        // التحقق من السرعات المحفوظة وتطبيقها
+        users.forEach(user => {
+            const savedSpeed = userSpeeds[user.username];
+            if (savedSpeed && savedSpeed !== user.speed && user.speed !== savedSpeed) {
+                // السرعة المحفوظة مختلفة عن الحالية - أرسل أمر تغيير
+                const existingCmd = pendingCommands.find(c => c.username === user.username && c.type === 'set-speed');
+                if (!existingCmd) {
+                    const command = {
+                        id: Date.now() + Math.random(),
+                        type: 'set-speed',
+                        username: user.username,
+                        speed: savedSpeed,
+                        createdAt: new Date().toISOString(),
+                        status: 'pending'
+                    };
+                    pendingCommands.push(command);
+                    console.log(`🔄 Auto-restore speed: ${user.username} → ${savedSpeed}`);
+                }
+            }
+        });
     }
 
     if (stats) {
