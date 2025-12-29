@@ -318,6 +318,19 @@ app.get('/', (req, res) => {
         }
     });
 
+    // تنسيق الذاكرة
+    const formatMemory = (bytes) => {
+        if (!bytes || bytes === 0) return '0 MB';
+        const mb = bytes / (1024 * 1024);
+        if (mb >= 1024) {
+            return (mb / 1024).toFixed(1) + ' GB';
+        }
+        return mb.toFixed(0) + ' MB';
+    };
+
+    const memoryDisplay = formatMemory(routerStats.memory);
+    const memoryPercent = routerStats.memoryPercent || 0;
+
     res.send(`
 <!DOCTYPE html>
 <html dir="rtl">
@@ -463,10 +476,10 @@ app.get('/', (req, res) => {
                 </div>
                 <div class="stat-row" style="margin-top: 15px;">
                     <span>💾 الذاكرة</span>
-                    <span class="stat-value">${routerStats.memory || 0}%</span>
+                    <span class="stat-value">\${memoryDisplay}</span>
                 </div>
                 <div class="progress-bar">
-                    <div class="progress-fill mem-fill" style="width: ${routerStats.memory || 0}%">${routerStats.memory || 0}%</div>
+                    <div class="progress-fill mem-fill" style="width: \${Math.min(memoryPercent, 100)}%">\${memoryPercent}%</div>
                 </div>
                 <div class="stat-row" style="margin-top: 10px;">
                     <span>⏱️ وقت التشغيل</span>
