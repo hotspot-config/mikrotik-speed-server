@@ -13,6 +13,7 @@ const executedCommands = []; // طلبات تم تنفيذها (للسجلات)
 let activeUsers = [];        // المستخدمين النشطين (يرسلها الراوتر)
 let routerStats = { cpu: 0, memory: 0, uptime: '0s', lastUpdate: null }; // إحصائيات الراوتر
 const userSpeeds = {};       // آخر سرعة لكل مستخدم (للحفظ بين إعادة التشغيل)
+const lastCommandTime = {};  // آخر وقت إرسال أمر لكل مستخدم (للحماية من التكرار)
 
 // مفتاح أمني بسيط للـ MikroTik
 const ROUTER_SECRET = process.env.ROUTER_SECRET || 'mikrotik-secret-key-2024';
@@ -60,12 +61,26 @@ app.get('/api/speed/set', (req, res) => {
     const user = username || u;
     const spd = speed || s;
 
+    // إرجاع صورة 1x1 شفافة
+    const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+
     if (!user || !spd) {
-        // إرجاع صورة 1x1 شفافة حتى لو فشل
-        const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
         res.set('Content-Type', 'image/gif');
         return res.send(pixel);
     }
+
+    // التحقق من التكرار - إذا أُرسل أمر لنفس المستخدم خلال 10 ثوانٍ، تجاهله
+    const now = Date.now();
+    const lastTime = lastCommandTime[user] || 0;
+    if (now - lastTime < 10000) {
+        console.log(`⏳ [GET] Skipping duplicate: ${user} → ${spd} (too soon)`);
+        res.set('Content-Type', 'image/gif');
+        res.set('Cache-Control', 'no-cache, no-store');
+        return res.send(pixel);
+    }
+
+    // تسجيل وقت الأمر
+    lastCommandTime[user] = now;
 
     // إضافة الطلب للقائمة
     const command = {
@@ -84,8 +99,6 @@ app.get('/api/speed/set', (req, res) => {
 
     console.log(`📝 [GET] Speed request: ${user} → ${spd} (saved)`);
 
-    // إرجاع صورة 1x1 شفافة
-    const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
     res.set('Content-Type', 'image/gif');
     res.set('Cache-Control', 'no-cache, no-store');
     res.send(pixel);
