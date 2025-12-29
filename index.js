@@ -10,6 +10,8 @@ app.use(express.json());
 // ============================================================
 const pendingCommands = [];  // طلبات تنتظر التنفيذ
 const executedCommands = []; // طلبات تم تنفيذها (للسجلات)
+let activeUsers = [];        // المستخدمين النشطين (يرسلها الراوتر)
+let routerStats = { cpu: 0, memory: 0, uptime: '0s', lastUpdate: null }; // إحصائيات الراوتر
 
 // مفتاح أمني بسيط للـ MikroTik
 const ROUTER_SECRET = process.env.ROUTER_SECRET || 'mikrotik-secret-key-2024';
@@ -139,6 +141,81 @@ app.post('/api/router/confirm', (req, res) => {
     console.log(`✅ Command ${commandId} ${success ? 'completed' : 'failed'}`);
 
     res.json({ success: true });
+});
+
+// ============================================================
+// API للـ MikroTik - لإرسال قائمة المتصلين النشطين
+// ============================================================
+app.post('/api/router/users', (req, res) => {
+    const secret = req.query.secret || req.headers['x-router-secret'];
+
+    if (secret !== ROUTER_SECRET) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { users, stats } = req.body;
+
+    if (users && Array.isArray(users)) {
+        activeUsers = users;
+        console.log(`👥 Received ${users.length} active users from router`);
+    }
+
+    if (stats) {
+        routerStats = { ...stats, lastUpdate: new Date().toISOString() };
+    }
+
+    res.json({ success: true, usersCount: activeUsers.length });
+});
+
+// ============================================================
+// API للداشبورد - لجلب المتصلين النشطين
+// ============================================================
+app.get('/api/users', (req, res) => {
+    res.json({
+        success: true,
+        users: activeUsers,
+        stats: routerStats,
+        timestamp: new Date().toISOString()
+    });
+});
+
+// ============================================================
+// API للداشبورد - لقطع اتصال مستخدم
+// ============================================================
+app.post('/api/user/disconnect', (req, res) => {
+    const { username } = req.body;
+
+    if (!username) {
+        return res.json({ success: false, error: 'Missing username' });
+    }
+
+    // إضافة أمر قطع الاتصال
+    const command = {
+        id: Date.now(),
+        type: 'disconnect',
+        username: username,
+        createdAt: new Date().toISOString(),
+        status: 'pending'
+    };
+
+    pendingCommands.push(command);
+    console.log(`🔌 Disconnect request: ${username}`);
+
+    res.json({ success: true, message: 'Disconnect command queued' });
+});
+
+// ============================================================
+// API للداشبورد - لجلب الإحصائيات
+// ============================================================
+app.get('/api/stats', (req, res) => {
+    res.json({
+        success: true,
+        stats: routerStats,
+        pendingCommands: pendingCommands.length,
+        executedCommands: executedCommands.length,
+        activeUsers: activeUsers.length,
+        recentCommands: executedCommands.slice(-20).reverse()
+    });
 });
 
 // ============================================================
