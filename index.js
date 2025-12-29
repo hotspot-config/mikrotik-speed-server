@@ -105,6 +105,34 @@ app.get('/api/speed/set', (req, res) => {
 });
 
 // ============================================================
+// API للـ On-Login Script - يسأل عن السرعة المطلوبة للمستخدم
+// ============================================================
+app.get('/api/onlogin', (req, res) => {
+    const { username, u, secret } = req.query;
+    const user = username || u;
+
+    // التحقق من المفتاح (اختياري للأمان)
+    if (secret && secret !== ROUTER_SECRET) {
+        return res.send('2M'); // سرعة افتراضية عند فشل المصادقة
+    }
+
+    if (!user) {
+        return res.send('2M'); // سرعة افتراضية
+    }
+
+    // البحث عن السرعة المحفوظة للمستخدم
+    const savedSpeed = userSpeeds[user];
+
+    if (savedSpeed) {
+        console.log(`🔄 [OnLogin] User ${user} → ${savedSpeed}`);
+        res.send(savedSpeed); // إرجاع السرعة (1M, 2M, 4M, 8M, Unlimited)
+    } else {
+        console.log(`🔄 [OnLogin] User ${user} → 2M (default)`);
+        res.send('2M'); // سرعة افتراضية
+    }
+});
+
+// ============================================================
 // API للـ MikroTik - لجلب الطلبات الجديدة
 // ============================================================
 app.get('/api/router/commands', (req, res) => {
