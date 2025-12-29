@@ -476,10 +476,10 @@ app.get('/', (req, res) => {
                 </div>
                 <div class="stat-row" style="margin-top: 15px;">
                     <span>💾 الذاكرة</span>
-                    <span class="stat-value">\${memoryDisplay}</span>
+                    <span class="stat-value">${memoryDisplay}</span>
                 </div>
                 <div class="progress-bar">
-                    <div class="progress-fill mem-fill" style="width: \${Math.min(memoryPercent, 100)}%">\${memoryPercent}%</div>
+                    <div class="progress-fill mem-fill" style="width: ${Math.min(memoryPercent, 100)}%">${memoryPercent}%</div>
                 </div>
                 <div class="stat-row" style="margin-top: 10px;">
                     <span>⏱️ وقت التشغيل</span>
