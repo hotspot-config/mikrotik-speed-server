@@ -15,7 +15,7 @@ const executedCommands = []; // طلبات تم تنفيذها (للسجلات)
 const ROUTER_SECRET = process.env.ROUTER_SECRET || 'mikrotik-secret-key-2024';
 
 // ============================================================
-// API من صفحة Login/Status - لإضافة طلب سرعة جديد
+// API من صفحة Login/Status - kkkلإضافة طلب سرعة جديد
 // ============================================================
 app.post('/api/speed/request', (req, res) => {
     const { username, speed, ip } = req.body;
@@ -150,3 +150,4 @@ app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`🔑 Router Secret: ${ROUTER_SECRET}`);
 });
+
